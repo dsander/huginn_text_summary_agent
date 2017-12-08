@@ -58,6 +58,24 @@ describe Agents::TextSummaryAgent do
         expect(summary).not_to be_nil
         expect(summary.length.to_f / text.length.to_f).to be <= 0.3
       end
+
+      it 'should be efficient when dealing with long texts' do
+        event.payload['data'] = File.read(File.join(File.dirname(__FILE__), 'data.txt'))
+        expect { @checker.receive([event]) }.to change(Event, :count).by(1)
+        summary = Event.last.payload['summary']
+        expect(summary).not_to be_nil
+        expect(summary.split('.').length).to eq(31)
+        expect(summary.length.to_f / event.payload['data'].length).to be <= 0.3
+      end
+
+      it 'lengthens the summary if the initial sentences guess was too low' do
+        event.payload['data'] = "This. will. throw. off. the. initial. guess. due. to. a. few. very. short. sentences. Lorem ipsum adipiscing elit. Duis malesuada. Nullam sit amet tellus diam. Duis eget vehicula ex. Duis nec rhoncus leo. Mauris turpis nisi, ultricies non eleifend ut, porta sit amet leo. Fusce ut imperdiet magna. Etiam fringilla commodo eros, eget pretium diam venenatis vitae. Vestibulum auctor nibh id tellus faucibus suscipit. Etiam rutrum urna id enim finibus varius. Quisque nec tristique sem. "
+        expect { @checker.receive([event]) }.to change(Event, :count).by(1)
+        summary = Event.last.payload['summary']
+        expect(summary).not_to be_nil
+        expect(summary.split('.').length).to eq(12)
+        expect(summary.length.to_f / event.payload['data'].length).to be <= 0.3
+      end
     end
 
     context 'in "sentences" mode' do

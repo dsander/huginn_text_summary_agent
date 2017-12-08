@@ -73,19 +73,53 @@ module Agents
       doc = Epitome::Document.new(interpolated['data'])
       corpus = Epitome::Corpus.new([doc])
       if interpolated['mode'] == 'percentage'
-        shorten_to_percentage(corpus: corpus, sentences: interpolated['data'].split('.').length, summary: interpolated['data'])
+        ShortenToPercentage.new(corpus: corpus, interpolated: interpolated).run
       else
         corpus.summary(interpolated['length'].to_i, interpolated['threshold'].to_f)
       end
     end
 
-    def shorten_to_percentage(corpus:, sentences:, summary:)
-      while summary.length.to_f / interpolated['data'].length > interpolated['length'].to_f
-        sentences -= 1
-        break if sentences == 0
-        summary = corpus.summary(sentences, interpolated['threshold'].to_f)
+    class ShortenToPercentage
+      attr_reader :corpus, :interpolated, :summary
+
+      def initialize(corpus:, interpolated:)
+        @corpus = corpus
+        @interpolated = interpolated
+        @sentences = (interpolated['data'].split('.').length * interpolated['length'].to_f).round
+        summarize!
       end
-      summary
+
+      def summarize!
+        @summary = corpus.summary(@sentences, interpolated['threshold'].to_f)
+      end
+
+      def run
+        if too_long?
+          (@summary, _) = iterate(direction: -1, do_while: :too_long?)
+        else
+          (_, @summary) = iterate(direction: 1, do_while: :too_short?)
+        end
+        @summary
+      end
+
+      def too_short?
+        !too_long?
+      end
+
+      def too_long?
+        summary.length.to_f / interpolated['data'].length > interpolated['length'].to_f
+      end
+
+      def iterate(direction:, do_while:)
+        previous_summary = nil
+        while send(do_while)
+          @sentences += direction
+          break if @sentences == 0
+          previous_summary = summary
+          summarize!
+        end
+        return [summary, previous_summary]
+      end
     end
   end
 end
