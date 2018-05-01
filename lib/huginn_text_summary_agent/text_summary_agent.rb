@@ -117,6 +117,7 @@ module Agents
           break if @sentences == 0
           previous_summary = summary
           summarize!
+          break if summary.empty?
         end
         return [summary, previous_summary]
       end

@@ -76,6 +76,13 @@ describe Agents::TextSummaryAgent do
         expect(summary.split('.').length).to eq(12)
         expect(summary.length.to_f / event.payload['data'].length).to be <= 0.3
       end
+
+      it 'does not choke on empty data' do
+        event.payload['data'] = ""
+        expect { @checker.receive([event]) }.to change(Event, :count).by(1)
+        summary = Event.last.payload['summary']
+        expect(summary).to be_empty
+      end
     end
 
     context 'in "sentences" mode' do
